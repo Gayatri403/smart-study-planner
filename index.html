@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart Study Planner — Dark</title>
+  <meta name="description" content="Dark theme Smart Study Planner with Pomodoro and localStorage" />
+  <style>
+    :root{
+      --bg:#070707;
+      --card:#0f1113;
+      --muted:#9aa4ad;
+      --text:#e7eef6;
+      --accent:#1fa3ff;
+      --accent-2:#6dd3ff;
+      --danger:#ff6b6b;
+      --success:#22c55e;
+      --glass: rgba(255,255,255,0.02);
+      --focus: 0 0 0 4px rgba(31,163,255,0.08);
+      --radius:12px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,var(--bg) 0%, #0b0b0b 100%);
+      color:var(--text);
+      padding:20px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .container{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns:350px 1fr;
+      gap:18px;
+      padding:20px;
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* sidebar */
+    .panel{
+      background: linear-gradient(180deg,var(--card), rgba(255,255,255,0.02));
+      padding:16px;
+      border-radius:var(--radius);
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+    h1{margin:0;font-size:18px;color:var(--text)}
+    p.lead{margin:6px 0 14px; color:var(--muted); font-size:13px}
+
+    label{display:block;font-size:13px;color:var(--muted);margin-top:8px}
+    input[type=text], input[type=number], input[type=datetime-local], select, textarea{
+      width:100%;
+      padding:8px 10px;
+      margin-top:6px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.03);
+      background: rgba(255,255,255,0.01);
+      color:var(--text);
+      font-size:14px;
+    }
+    textarea{resize:vertical}
+
+    .row{display:flex;gap:8px}
+    .btn{
+      padding:9px 12px;border-radius:10px;border:0;background:var(--accent);color:#031024;font-weight:700;cursor:pointer;
+      box-shadow:0 6px 18px rgba(31,163,255,0.08);
+    }
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)}
+    .btn:focus{outline:none;box-shadow:var(--focus)}
+
+    footer{font-size:12px;color:var(--muted);margin-top:12px}
+
+    /* main */
+    .main{padding:16px;background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.006)); border-radius:var(--radius); border:1px solid rgba(255,255,255,0.02)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .stats{display:flex;gap:12px}
+    .stat{min-width:110px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.01);text-align:center}
+    .stat small{display:block;color:var(--muted);font-size:12px}
+    .task-list{margin-top:14px;display:grid;gap:12px}
+    .task{display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.02)}
+    .task .meta{font-size:12px;color:var(--muted);margin-top:6px}
+    .badge{padding:6px 8px;border-radius:999px;font-size:12px}
+    .high{background:linear-gradient(90deg, rgba(255,107,107,0.12), rgba(255,107,107,0.06)); color:var(--danger)}
+    .med{background:linear-gradient(90deg, rgba(255,196,90,0.08), rgba(255,196,90,0.04)); color:#e0b85a}
+    .low{background:linear-gradient(90deg, rgba(34,197,94,0.06), rgba(34,197,94,0.03)); color:var(--success)}
+
+    .actions{display:flex;gap:8px}
+    .timer-display{font-weight:800;font-size:26px;padding:8px 14px;border-radius:10px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+    .pomodoro{display:flex;gap:10px;align-items:center}
+
+    /* small screens */
+    @media (max-width:980px){
+      .container{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="Smart Study Planner Dark">
+    <aside class="panel" aria-label="Add task panel">
+      <h1>Smart Study Planner</h1>
+      <p class="lead">Dark mode — add tasks, use Pomodoro, and get smart suggestions. Data saved locally in your browser.</p>
+
+      <label for="subject">Subject</label>
+      <input id="subject" placeholder="e.g. Physics" type="text" />
+
+      <label for="title">Task title</label>
+      <input id="title" placeholder="e.g. Chapter 4: Motion" type="text" />
+
+      <div class="row">
+        <div style="flex:1">
+          <label for="deadline">Deadline (optional)</label>
+          <input id="deadline" type="datetime-local" />
+        </div>
+        <div style="width:110px">
+          <label for="duration">Est. min</label>
+          <input id="duration" type="number" min="5" step="5" value="30" />
+        </div>
+      </div>
+
+      <label for="priority">Priority</label>
+      <select id="priority">
+        <option value="high">High</option>
+        <option value="medium" selected>Medium</option>
+        <option value="low">Low</option>
+      </select>
+
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" rows="3" placeholder="Any quick notes..."></textarea>
+
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button id="addBtn" class="btn">Add Task</button>
+        <button id="clearBtn" class="btn btn-ghost">Clear All</button>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.02)"/>
+
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;color:var(--muted)">Quick actions</div>
+        <div>
+          <button id="suggestBtn" class="btn btn-ghost">Get Smart Suggest</button>
+        </div>
+      </div>
+
+      <footer>Tip: Start a Pomodoro for a task, focus for 25 minutes, then mark done when complete.</footer>
+    </aside>
+
+    <main class="main" aria-label="Planner main">
+      <div class="toolbar">
+        <div class="stats">
+          <div class="stat"><small>Tasks</small><div id="count">0</div></div>
+          <div class="stat"><small>Pending Minutes</small><div id="minutes">0</div></div>
+          <div class="stat"><small>Completed</small><div id="completed">0</div></div>
+        </div>
+
+        <div class="pomodoro">
+          <div>
+            <small style="color:var(--muted)">Pomodoro</small>
+            <div id="timer" class="timer-display">25:00</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+            <div style="display:flex;gap:8px">
+              <button id="startTimer" class="btn">Start</button>
+              <button id="stopTimer" class="btn btn-ghost">Stop</button>
+            </div>
+            <div style="font-size:13px;color:var(--muted)">Session: <span id="sessionType">Work</span></div>
+          </div>
+        </div>
+      </div>
+
+      <section style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h2 style="margin:0;font-size:16px">Your Tasks</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:13px;color:var(--muted)">Sort</label>
+            <select id="sortBy">
+              <option value="smart">Smart (deadline & priority)</option>
+              <option value="deadline">Deadline</option>
+              <option value="priority">Priority</option>
+              <option value="duration">Duration</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="taskList" class="task-list" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Dark theme planner script
+    const STORAGE_KEY = 'smart-study-planner-dark-v1';
+    let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const el = id => document.getElementById(id);
+    const subject = el('subject');
+    const title = el('title');
+    const deadline = el('deadline');
+    const duration = el('duration');
+    const priority = el('priority');
+    const notes = el('notes');
+    const addBtn = el('addBtn');
+    const clearBtn = el('clearBtn');
+    const suggestBtn = el('suggestBtn');
+    const taskList = el('taskList');
+    const count = el('count');
+    const minutes = el('minutes');
+    const completed = el('completed');
+    const sortBy = el('sortBy');
+
+    // Pomodoro
+    let timerInterval = null;
+    let secondsLeft = 25 * 60;
+    let isWork = true;
+    const timerEl = el('timer');
+    const startTimerBtn = el('startTimer');
+    const stopTimerBtn = el('stopTimer');
+    const sessionType = el('sessionType');
+
+    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+    function uid(){ return 't_' + Math.random().toString(36).slice(2,9); }
+
+    function humanDate(d){
+      if(!d) return 'No deadline';
+      try { return new Date(d).toLocaleString(); } catch(e){ return d; }
+    }
+
+    // scoring (lower = higher priority)
+    function scoreTask(t){
+      const now = Date.now();
+      let score = 0;
+      if(t.priority === 'high') score -= 40;
+      if(t.priority === 'medium') score -= 10;
+      if(t.priority === 'low') score += 10;
+      if(t.deadline){
+        const d = new Date(t.deadline).getTime();
+        const diffDays = Math.floor((d - now) / (1000*60*60*24));
+        score += Math.max(-60, diffDays);
+      } else {
+        score += 20;
+      }
+      score += (t.duration || 30) / 15;
+      return score;
+    }
+
+    function addTask(){
+      const s = subject.value.trim();
+      const t = title.value.trim();
+      const d = deadline.value || null;
+      const dur = parseInt(duration.value || '30');
+      const p = priority.value;
+      const n = notes.value.trim();
+      if(!t){ alert('Please enter a task title.'); return; }
+      tasks.push({ id: uid(), subject: s, title: t, deadline: d, duration: dur, priority: p, notes: n, done:false, created: new Date().toISOString() });
+      save(); render();
+      title.value = ''; notes.value = '';
+    }
+
+    function clearAll(){ if(!confirm('Clear ALL tasks?')) return; tasks = []; save(); render(); }
+
+    function markDone(id){ const t = tasks.find(x => x.id === id); if(t){ t.done = true; t.completedAt = new Date().toISOString(); save(); render(); } }
+    function removeTask(id){ tasks = tasks.filter(x => x.id !== id); save(); render(); }
+
+    function getSorted(by){
+      const list = [...tasks];
+      if(by === 'deadline'){
+        list.sort((a,b) => {
+          if(!a.deadline && !b.deadline) return 0;
+          if(!a.deadline) return 1;
+          if(!b.deadline) return -1;
+          return new Date(a.deadline) - new Date(b.deadline);
+        });
+      } else if(by === 'priority'){
+        const order = { 'high':0, 'medium':1, 'low':2 };
+        list.sort((a,b) => order[a.priority] - order[b.priority]);
+      } else if(by === 'duration'){
+        list.sort((a,b) => (a.duration||0) - (b.duration||0));
+      } else {
+        list.sort((a,b) => scoreTask(a) - scoreTask(b));
+      }
+      return list;
+    }
+
+    function render(){
+      taskList.innerHTML = '';
+      const sorted = getSorted(sortBy.value);
+      let pendingMinutes = 0;
+      let completedCount = 0;
+
+      sorted.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'task';
+
+        const left = document.createElement('div');
+        left.style.flex = '1';
+
+        const titleEl = document.createElement('div');
+        titleEl.style.fontWeight = '700';
+        titleEl.textContent = t.title + (t.subject ? ' — ' + t.subject : '');
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = `${humanDate(t.deadline)} • ${t.duration} min`;
+
+        const note = document.createElement('div');
+        note.style.marginTop = '8px';
+        note.style.fontSize = '13px';
+        note.style.color = 'var(--accent-2)';
+        note.textContent = t.notes || '';
+
+        left.appendChild(titleEl);
+        left.appendChild(meta);
+        left.appendChild(note);
+
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.flexDirection = 'column';
+        right.style.alignItems = 'flex-end';
+        right.style.gap = '8px';
+
+        const badge = document.createElement('div');
+        badge.className = 'badge ' + (t.priority === 'high' ? 'high' : t.priority === 'medium' ? 'med' : 'low');
+        badge.textContent = t.priority.toUpperCase();
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const startBtn = document.createElement('button');
+        startBtn.className = 'btn btn-ghost';
+        startBtn.textContent = 'Start';
+        startBtn.onclick = () => startPomodoroForTask(t.id);
+
+        const doneBtn = document.createElement('button');
+        doneBtn.className = 'btn';
+        doneBtn.textContent = t.done ? 'Done' : 'Mark Done';
+        doneBtn.disabled = !!t.done;
+        doneBtn.onclick = () => markDone(t.id);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-ghost';
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = () => {
+          if(confirm('Delete this task?')) removeTask(t.id);
+        };
+
+        actions.appendChild(startBtn);
+        actions.appendChild(doneBtn);
+        actions.appendChild(delBtn);
+
+        right.appendChild(badge);
+        right.appendChild(actions);
+
+        item.appendChild(left);
+        item.appendChild(right);
+        taskList.appendChild(item);
+
+        if(!t.done) pendingMinutes += (t.duration || 0);
+        if(t.done) completedCount++;
+      });
+
+      count.textContent = tasks.length;
+      minutes.textContent = pendingMinutes;
+      completed.textContent = completedCount;
+    }
+
+    function suggest(){
+      const list = getSorted('smart');
+      const pick = list.filter(t => !t.done).slice(0,3);
+      if(pick.length === 0) return alert('No pending tasks to suggest');
+      const names = pick.map(p => `${p.title}${p.subject? ' ('+p.subject+')' : ''} — ${p.duration}m`).join('\n');
+      alert('Top suggestions:\n\n' + names + '\n\n(Selected by deadline, priority, and estimated time)');
+    }
+
+    // Pomodoro timer
+    function formatTime(s){ const mm = String(Math.floor(s/60)).padStart(2,'0'); const ss = String(s%60).padStart(2,'0'); return `${mm}:${ss}`; }
+
+    function startTimer(){
+      if(timerInterval) return;
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        timerEl.textContent = formatTime(secondsLeft);
+        if(secondsLeft <= 0){
+          clearInterval(timerInterval); timerInterval = null;
+          // swap session
+          isWork = !isWork;
+          if(isWork){ secondsLeft = 25*60; sessionType.textContent = 'Work'; }
+          else { secondsLeft = 5*60; sessionType.textContent = 'Break'; }
+          try{ if('Notification' in window && Notification.permission === 'granted') new Notification('Pomodoro', { body: isWork ? 'Work session started' : 'Break started' }); }catch(e){}
+          startTimer();
+        }
+      }, 1000);
+    }
+    function stopTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval = null; } }
+
+    function startPomodoroForTask(taskId){
+      isWork = true; secondsLeft = 25*60; sessionType.textContent = 'Work';
+      startTimer();
+      alert('Pomodoro started for selected task. Focus for 25 minutes, then mark the task done when complete.');
+    }
+
+    // init and bindings
+    addBtn.onclick = addTask;
+    clearBtn.onclick = clearAll;
+    suggestBtn.onclick = suggest;
+    sortBy.onchange = render;
+
+    startTimerBtn.onclick = startTimer;
+    stopTimerBtn.onclick = stopTimer;
+
+    title.addEventListener('keydown', e => { if(e.key === 'Enter'){ addTask(); e.preventDefault(); } });
+
+    render();
+
+    // Notifications
+    if('Notification' in window && Notification.permission !== 'granted'){ Notification.requestPermission().catch(()=>{}); }
+
+    // export/import helpers in console
+    window.smartPlannerDark = {
+      export: () => JSON.stringify(tasks),
+      import: (json) => { try{ tasks = JSON.parse(json); save(); render(); alert('Imported'); } catch(e){ alert('Invalid data'); } }
+    };
+
+    window.addEventListener('beforeunload', save);
+  </script>
+</body>
+</html>
